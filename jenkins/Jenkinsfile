@@ -1,0 +1,105 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials') // You must create this in Jenkins
+        IMAGE_NAME = 'tauhid1987/frontend-app'
+        GOOGLE_CHAT_URL = 'https://chat.googleapis.com/v1/spaces/AAQAqOajUZc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=GXtjOvkk0DhtXnIY1gtfpB0fa8_2vwOo_FyKmKraqlo'
+    }
+
+ 
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/QALeadTauhid/FinalExamDevOps.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def now = new Date().format("dd-MM-HH-mm")
+                    def tag = "pipeline_${env.BUILD_NUMBER}-${now}"
+                    env.IMAGE_TAG = tag
+
+                    sh """
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                    sh """
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${IMAGE_NAME}:latest
+                        docker logout
+                    """
+                }
+            }
+        }
+
+        stage('Update docker-compose.yaml and Restart') {
+            steps {
+                script {
+                    sh """
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' /var/www/app/docker-compose.yaml
+                        docker-compose -f /var/www/app/docker-compose.yaml down
+                        docker-compose -f /var/www/app/docker-compose.yaml up -d
+                    """
+                }
+            }
+        }
+
+        stage('Push docker-compose.yaml back to GitHub') {
+            steps {
+                sh """
+                    git config --global user.name "jenkins"
+                    git config --global user.email "jenkins@example.com"
+                    git add /var/www/app/docker-compose.yaml
+                    git commit -m "Updated image tag to ${IMAGE_TAG}"
+                    git push origin main
+                """
+            }
+        }
+
+        stage('Send Google Chat Notification') {
+            steps {
+                script {
+                    def message = """{
+                      "text": "*Your application has been updated*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    }"""
+                    sh """
+                        curl -X POST -H 'Content-Type: application/json' \
+                        -d '${message}' "${GOOGLE_CHAT_URL}"
+                    """
+                }
+            }
+        }
+
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+    }
+
+    post {
+        failure {
+            script {
+                def message = """{
+                  "text": "*Deployment Failed*\\nCheck Jenkins for logs."
+                }"""
+                sh """
+                    curl -X POST -H 'Content-Type: application/json' \
+                    -d '${message}' "${GOOGLE_CHAT_URL}"
+                """
+            }
+        }
+    }
+}
