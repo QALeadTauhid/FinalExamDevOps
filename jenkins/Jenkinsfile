@@ -72,7 +72,7 @@ pipeline {
             steps {
                 script {
                     def message = """{
-                      "text": "*✅ Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                      "text": "*Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
                     }"""
                     sh """
                         curl -X POST -H 'Content-Type: application/json' \
