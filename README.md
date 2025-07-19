@@ -11,7 +11,7 @@ The goal of this project is to create a Jenkins-based CI/CD pipeline hosted on a
 - Deploying updated service on remote EC2
 - Pushing config updates to GitHub `main` branch
 
----------
+---
 
 ## 🔧 Tools & Technologies
 
