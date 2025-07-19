@@ -1,0 +1,21 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Build folders
+dist/
+build/
+
+# IDE/editor configs
+.vscode/
+.idea/
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db

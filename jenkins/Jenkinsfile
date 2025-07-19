@@ -43,16 +43,25 @@ pipeline {
         }
 
         stage('Update docker-compose.yaml and Restart') {
-            steps {
-                script {
-                    sh """
-                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
-                        docker-compose -f jenkins/docker-compose.yaml down
-                        docker-compose -f jenkins/docker-compose.yaml up -d
-                    """
-                }
+        steps {
+            script {
+                sh """
+                    # Stop the old container if it exists
+                    docker ps -q -f name=jenkins-frontend-1 | grep -q . && docker stop jenkins-frontend-1 || echo 'Container not running'
+                    # Remove the old container if it exists
+                    docker ps -a -q -f name=jenkins-frontend-1 | grep -q . && docker rm jenkins-frontend-1 || echo 'Container not removed'
+
+                    # Update the image tag in docker-compose.yaml
+                    sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' /var/www/app/docker-compose.yaml
+
+                    # Bring down and up the docker-compose services
+                    docker-compose -f /var/www/app/docker-compose.yaml down
+                    docker-compose -f /var/www/app/docker-compose.yaml up -d
+                """
             }
         }
+    }
+
 
         stage('Push docker-compose.yaml back to GitHub') {
             steps {
