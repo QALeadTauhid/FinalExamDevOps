@@ -47,7 +47,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' docker-compose.yaml
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
                         docker-compose down
                         docker-compose up -d
                     """
@@ -73,7 +73,7 @@ pipeline {
             steps {
                 script {
                     def message = """{
-                      "text": "*✅ Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                      "text": "* Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
                     }"""
                     sh """
                         curl -X POST -H 'Content-Type: application/json' \
