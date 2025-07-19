@@ -1,7 +1,7 @@
 version: '3'
 services:
   frontend:
-    image: tauhid1987/frontend-app:pipeline_19-19-07-16-38
+    image: tauhid1987/frontend-app:pipeline_20-19-07-16-39
     ports:
       - "9097:3000"
     restart: always
