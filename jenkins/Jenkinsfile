@@ -2,12 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials') // You must create this in Jenkins
+        DOCKER_CREDENTIALS = credentials('tauhid1987') // DockerHub username/password
+        GOOGLE_CHAT_URL = credentials('google-chat-webhook') // Secret text
         IMAGE_NAME = 'tauhid1987/frontend-app'
-        GOOGLE_CHAT_URL = 'https://chat.googleapis.com/v1/spaces/AAQAqOajUZc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=GXtjOvkk0DhtXnIY1gtfpB0fa8_2vwOo_FyKmKraqlo'
     }
-
- 
 
     stages {
         stage('Checkout') {
@@ -34,7 +32,7 @@ pipeline {
         stage('Push to DockerHub') {
             steps {
                 script {
-                    sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                    sh "echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin"
                     sh """
                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${IMAGE_NAME}:latest
@@ -48,9 +46,9 @@ pipeline {
             steps {
                 script {
                     sh """
-                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' /var/www/app/docker-compose.yaml
-                        docker-compose -f /var/www/app/docker-compose.yaml down
-                        docker-compose -f /var/www/app/docker-compose.yaml up -d
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' docker-compose.yaml
+                        docker-compose down
+                        docker-compose up -d
                     """
                 }
             }
@@ -58,13 +56,15 @@ pipeline {
 
         stage('Push docker-compose.yaml back to GitHub') {
             steps {
-                sh """
-                    git config --global user.name "jenkins"
-                    git config --global user.email "jenkins@example.com"
-                    git add /var/www/app/docker-compose.yaml
-                    git commit -m "Updated image tag to ${IMAGE_TAG}"
-                    git push origin main
-                """
+                script {
+                    sh """
+                        git config --global user.name "jenkins"
+                        git config --global user.email "jenkins@example.com"
+                        git add docker-compose.yaml
+                        git commit -m "Updated image tag to ${IMAGE_TAG}"
+                        git push origin main
+                    """
+                }
             }
         }
 
@@ -72,7 +72,7 @@ pipeline {
             steps {
                 script {
                     def message = """{
-                      "text": "*Your application has been updated*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                      "text": "*✅ Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
                     }"""
                     sh """
                         curl -X POST -H 'Content-Type: application/json' \
@@ -93,7 +93,7 @@ pipeline {
         failure {
             script {
                 def message = """{
-                  "text": "*Deployment Failed*\\nCheck Jenkins for logs."
+                  "text": "* Deployment Failed*\\nCheck Jenkins logs for details."
                 }"""
                 sh """
                     curl -X POST -H 'Content-Type: application/json' \
