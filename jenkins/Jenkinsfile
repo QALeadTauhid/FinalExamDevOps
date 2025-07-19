@@ -22,10 +22,9 @@ pipeline {
                     env.IMAGE_TAG = tag
 
                     sh """
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f frontend-app/Dockerfile frontend-app
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                """
-
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f frontend-app/Dockerfile frontend-app
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                    """
                 }
             }
         }
@@ -61,7 +60,8 @@ pipeline {
                     sh """
                         git config --global user.name "jenkins"
                         git config --global user.email "jenkins@example.com"
-                        git add docker-compose.yaml
+                        git pull --rebase origin main
+                        git add jenkins/docker-compose.yaml
                         git commit -m "Updated image tag to ${IMAGE_TAG}"
                         git push origin main
                     """
@@ -73,7 +73,7 @@ pipeline {
             steps {
                 script {
                     def message = """{
-                      "text": "* Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                      "text": "*Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
                     }"""
                     sh """
                         curl -X POST -H 'Content-Type: application/json' \
@@ -94,7 +94,7 @@ pipeline {
         failure {
             script {
                 def message = """{
-                  "text": "* Deployment Failed*\\nCheck Jenkins logs for details."
+                  "text": "*Deployment Failed*\\nCheck Jenkins logs for details."
                 }"""
                 sh """
                     curl -X POST -H 'Content-Type: application/json' \
