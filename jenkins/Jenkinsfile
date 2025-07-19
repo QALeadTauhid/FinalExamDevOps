@@ -22,9 +22,10 @@ pipeline {
                     env.IMAGE_TAG = tag
 
                     sh """
-                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                    """
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f frontend-app/Dockerfile frontend-app
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                """
+
                 }
             }
         }
