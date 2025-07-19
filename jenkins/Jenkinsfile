@@ -41,33 +41,21 @@ pipeline {
                 }
             }
         }
-
-       stage('Update docker-compose.yaml and Restart') {
-        steps {
-            script {
-                // Update docker-compose.yaml in Jenkins workspace
-                sh """
-                    sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
-                """
-
-                // Copy updated file to EC2
-                sh """
-                    scp -i /var/lib/jenkins/.ssh/finalexamkey.pem jenkins/docker-compose.yaml ubuntu@13.232.20.108:/var/www/app/docker-compose.yaml
-                """
-
-                // SSH into EC2 and restart docker-compose
-                sh """
-                    ssh -i /var/lib/jenkins/.ssh/finalexamkey.pem ubuntu@13.232.20.108 '
-                        cd /var/www/app
-                        docker-compose down
-                        docker-compose up -d
-                    '
-                """
+        stage('Update docker-compose.yaml and Restart') {
+            steps {
+                script {
+                    sh """
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
+                        scp -i /var/lib/jenkins/.ssh/finalexamkey.pem -o StrictHostKeyChecking=no jenkins/docker-compose.yaml ubuntu@13.232.20.108:/var/www/app/docker-compose.yaml
+                        ssh -i /var/lib/jenkins/.ssh/finalexamkey.pem -o StrictHostKeyChecking=no ubuntu@13.232.20.108 '
+                            cd /var/www/app
+                            docker-compose down
+                            docker-compose up -d
+                        '
+                    """
+                }
             }
         }
-    }
-
-
 
 
         stage('Push docker-compose.yaml back to GitHub') {
