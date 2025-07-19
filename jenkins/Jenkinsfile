@@ -47,8 +47,8 @@ pipeline {
                 script {
                     sh """
                         sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
-                        docker-compose down
-                        docker-compose up -d
+                        docker-compose -f jenkins/docker-compose.yaml down
+                        docker-compose -f jenkins/docker-compose.yaml up -d
                     """
                 }
             }
