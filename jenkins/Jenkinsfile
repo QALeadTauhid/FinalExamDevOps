@@ -2,17 +2,31 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials') // You must create this in Jenkins
+        DOCKER_CREDENTIALS = credentials('tauhid1987') // DockerHub username/password
+        GOOGLE_CHAT_URL = credentials('google-chat-webhook') // Secret text
         IMAGE_NAME = 'tauhid1987/frontend-app'
-        GOOGLE_CHAT_URL = 'https://chat.googleapis.com/v1/spaces/AAQAqOajUZc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=GXtjOvkk0DhtXnIY1gtfpB0fa8_2vwOo_FyKmKraqlo'
+        GIT_TOKEN = credentials('GIT_PAT')
     }
-
- 
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/QALeadTauhid/FinalExamDevOps.git'
+            }
+        }
+
+        stage('Validate Merge from dev to main') {
+            steps {
+                script {
+                    def commitMessage = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+                    if (!commitMessage.contains("Merge branch 'dev' into main")) {
+                        echo "❌ Not a merge from dev to main. Skipping pipeline."
+                        currentBuild.result = 'NOT_BUILT'
+                        error("Stopping pipeline: Not a dev -> main merge.")
+                    } else {
+                        echo "✅ Valid merge from dev to main detected. Proceeding."
+                    }
+                }
             }
         }
 
@@ -24,7 +38,7 @@ pipeline {
                     env.IMAGE_TAG = tag
 
                     sh """
-                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f frontend-app/Dockerfile frontend-app
                         docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
                     """
                 }
@@ -34,7 +48,7 @@ pipeline {
         stage('Push to DockerHub') {
             steps {
                 script {
-                    sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                    sh "echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin"
                     sh """
                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
                         docker push ${IMAGE_NAME}:latest
@@ -48,9 +62,13 @@ pipeline {
             steps {
                 script {
                     sh """
-                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' /var/www/app/docker-compose.yaml
-                        docker-compose -f /var/www/app/docker-compose.yaml down
-                        docker-compose -f /var/www/app/docker-compose.yaml up -d
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
+                        scp -i /var/lib/jenkins/.ssh/finalexamkey.pem -o StrictHostKeyChecking=no jenkins/docker-compose.yaml ubuntu@13.232.20.108:/var/www/app/docker-compose.yaml
+                        ssh -i /var/lib/jenkins/.ssh/finalexamkey.pem -o StrictHostKeyChecking=no ubuntu@13.232.20.108 '
+                            cd /var/www/app
+                            docker-compose down
+                            docker-compose up -d
+                        '
                     """
                 }
             }
@@ -58,13 +76,17 @@ pipeline {
 
         stage('Push docker-compose.yaml back to GitHub') {
             steps {
-                sh """
-                    git config --global user.name "jenkins"
-                    git config --global user.email "jenkins@example.com"
-                    git add /var/www/app/docker-compose.yaml
-                    git commit -m "Updated image tag to ${IMAGE_TAG}"
-                    git push origin main
-                """
+                script {
+                    sh '''
+                        git config --global user.name jenkins
+                        git config --global user.email jenkins@example.com
+                        git remote set-url origin https://${GIT_TOKEN}@github.com/QALeadTauhid/FinalExamDevOps.git
+                        git add jenkins/docker-compose.yaml
+                        git commit -m "Update docker-compose.yaml with new image tag" || echo "No changes to commit"
+                        git pull --rebase origin main
+                        git push origin main
+                    '''
+                }
             }
         }
 
@@ -72,7 +94,7 @@ pipeline {
             steps {
                 script {
                     def message = """{
-                      "text": "*Your application has been updated*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
+                      "text": "*Deployment Successful*\\nImage: ${IMAGE_NAME}:${IMAGE_TAG}"
                     }"""
                     sh """
                         curl -X POST -H 'Content-Type: application/json' \
@@ -93,7 +115,7 @@ pipeline {
         failure {
             script {
                 def message = """{
-                  "text": "*Deployment Failed*\\nCheck Jenkins for logs."
+                  "text": "*Deployment Failed*\\nCheck Jenkins logs for details."
                 }"""
                 sh """
                     curl -X POST -H 'Content-Type: application/json' \
