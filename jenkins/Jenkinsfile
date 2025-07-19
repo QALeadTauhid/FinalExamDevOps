@@ -42,9 +42,9 @@ pipeline {
             }
         }
 
-        stage('Update docker-compose.yaml and Restart') {
-            steps {
-                script {
+       stage('Update docker-compose.yaml and Restart') {
+        steps {
+            script {
                 // Update docker-compose.yaml in Jenkins workspace
                 sh """
                     sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' jenkins/docker-compose.yaml
@@ -52,20 +52,21 @@ pipeline {
 
                 // Copy updated file to EC2
                 sh """
-                    scp -i /path/to/your/private_key jenkins/docker-compose.yaml ec2-user@YOUR_EC2_IP:/var/www/app/docker-compose.yaml
+                    scp -i /var/lib/jenkins/.ssh/finalexamkey.pem jenkins/docker-compose.yaml ubuntu@13.232.20.108:/var/www/app/docker-compose.yaml
                 """
 
                 // SSH into EC2 and restart docker-compose
                 sh """
-                    ssh -i /path/to/your/private_key ec2-user@YOUR_EC2_IP '
-                    cd /var/www/app
-                    docker-compose down
-                    docker-compose up -d
+                    ssh -i /var/lib/jenkins/.ssh/finalexamkey.pem ubuntu@13.232.20.108 '
+                        cd /var/www/app
+                        docker-compose down
+                        docker-compose up -d
                     '
                 """
-                }
             }
         }
+    }
+
 
 
 
